@@ -1,0 +1,16 @@
+[project]
+name = "foodbi-etl"
+version = "0.1.0"
+description = "ETL local da base oficial de CNPJ da Receita Federal para o FoodBI Map."
+requires-python = ">=3.11"
+dependencies = [
+  "pymysql>=1.1.1",
+  "requests>=2.32.3"
+]
+
+[project.scripts]
+foodbi-etl = "foodbi_etl.cli:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"

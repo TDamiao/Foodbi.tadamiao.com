@@ -1,0 +1,32 @@
+{
+  "name": "foodbi-map",
+  "version": "0.1.0",
+  "description": "Mapa interativo de estabelecimentos de alimentacao por cidade usando Node.js, MySQL e APIs publicas de CNPJ.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:setup": "node scripts/setup-db.js",
+    "job:daily": "node scripts/run-daily-update.js"
+  },
+  "keywords": [
+    "cnpj",
+    "foodbi",
+    "leaflet",
+    "mysql",
+    "open-source"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "mysql2": "^3.11.5",
+    "node-cron": "^4.6.0",
+    "pino": "^9.5.0",
+    "pino-http": "^10.4.0"
+  }
+}

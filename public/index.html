@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FoodBI Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>FoodBI Map</h1>
+        <p>Inteligencia territorial de estabelecimentos ativos de alimentacao.</p>
+      </div>
+      <nav class="app-nav" aria-label="Navegacao principal">
+        <button class="nav-button active" type="button" data-view-target="mapView">Mapa</button>
+        <button class="nav-button" type="button" data-view-target="statesView">Estados</button>
+        <button class="nav-button" type="button" data-view-target="citiesView">Cidades</button>
+        <button class="nav-button" type="button" data-view-target="dataView">Dados</button>
+      </nav>
+      <div class="source-note">
+        <span>Receita Federal CNPJ 2026-06</span>
+        <strong id="sourceDate">-</strong>
+      </div>
+    </header>
+
+    <main>
+      <section class="view active" id="mapView">
+        <section class="overview">
+          <div class="metric metric-primary">
+            <span>Estabelecimentos ativos no Brasil</span>
+            <strong id="totalEstablishments">0</strong>
+          </div>
+          <div class="metric">
+            <span>Estados mapeados</span>
+            <strong id="totalStates">0</strong>
+          </div>
+          <div class="metric">
+            <span>Cidades mapeadas</span>
+            <strong id="totalCities">0</strong>
+          </div>
+          <div class="metric">
+            <span>Categorias mapeadas</span>
+            <strong id="totalCategories">0</strong>
+          </div>
+        </section>
+
+        <div class="map-layout">
+          <div class="map-wrap">
+            <div id="map"></div>
+            <div class="map-filter-control">
+              <button class="filter-toggle" id="filterToggle" type="button" aria-expanded="false">Filtros</button>
+              <div class="filter-summary" id="filterSummary" hidden></div>
+              <div class="filter-panel" id="filterPanel" hidden>
+                <label>
+                  UF
+                  <select id="ufFilter">
+                    <option value="">Todas</option>
+                  </select>
+                </label>
+                <label>
+                  Categoria
+                  <select id="categoryFilter">
+                    <option value="">Todas</option>
+                  </select>
+                </label>
+                <button class="clear-filters" id="clearFiltersButton" type="button" hidden>Liberar todos</button>
+              </div>
+            </div>
+            <div class="map-mode" id="mapMode">Estados</div>
+            <div class="map-empty" id="mapEmpty" hidden>
+              Nenhum ponto encontrado para os filtros atuais.
+            </div>
+          </div>
+          <aside class="map-summary">
+            <section>
+              <div class="section-title">
+                <h2>Distribuicao por categoria</h2>
+                <span id="categoryTotalLabel">-</span>
+              </div>
+              <div id="categoryBars" class="category-bars"></div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view state-view" id="statesView" hidden>
+        <section class="state-panel">
+          <div class="state-header">
+            <div class="state-title-block">
+              <h2 id="statePageTitle">Analise dos estados</h2>
+              <p id="statePageSubtitle">Ranking estadual dos estabelecimentos ativos de alimentacao.</p>
+            </div>
+            <div class="state-filter-box">
+              <label>
+                Estado
+                <select id="stateAnalysisFilter"></select>
+              </label>
+            </div>
+          </div>
+          <div class="state-kpis">
+            <div class="metric">
+              <span id="stateCitiesLabel">Cidades</span>
+              <strong id="stateCities">0</strong>
+            </div>
+            <div class="metric">
+              <span id="stateCategoriesLabel">Categorias</span>
+              <strong id="stateCategories">0</strong>
+            </div>
+          </div>
+          <div class="state-grid">
+            <section class="state-card">
+              <div class="section-title">
+                <h2>Estabelecimentos por estados</h2>
+                <span id="topStatesLabel">Top 10</span>
+              </div>
+              <ol id="topStatesList" class="ranking ranked-list"></ol>
+            </section>
+            <section class="state-card">
+              <div class="section-title">
+                <h2>Top cidades do estado</h2>
+                <span id="stateRankingLabel">-</span>
+              </div>
+              <ol id="stateRankingList" class="ranking"></ol>
+            </section>
+            <section class="state-card state-card-categories">
+              <div class="section-title">
+                <h2>Categorias no estado</h2>
+                <span id="stateCategoryLabel">-</span>
+              </div>
+              <div id="stateCategoryBars" class="category-bars"></div>
+            </section>
+          </div>
+        </section>
+      </section>
+
+      <section class="view content-view" id="citiesView" hidden>
+        <aside class="list-panel">
+          <div class="panel-search">
+            <input id="cityPageInput" name="cityPage" placeholder="Buscar cidade" autocomplete="off">
+            <button id="cityPageSearchButton" type="button">Buscar</button>
+          </div>
+          <div class="section-title">
+            <h2>Ranking nacional</h2>
+            <span>Top cidades</span>
+          </div>
+          <ol id="rankingList" class="ranking"></ol>
+        </aside>
+
+        <section id="cityDetail" class="city-detail detail-panel">
+          <h2>Detalhe da cidade</h2>
+          <p class="empty">Selecione uma cidade no ranking ou busque uma cidade da base local.</p>
+        </section>
+      </section>
+
+      <section class="view content-view" id="dataView" hidden>
+        <section class="data-panel">
+          <div class="section-title">
+            <h2>Base e metodologia</h2>
+            <span>Open-source</span>
+          </div>
+          <div class="data-grid">
+            <div>
+              <span>Fonte principal</span>
+              <strong>Receita Federal Dados Abertos CNPJ</strong>
+              <p>Competencia 2026-06, processada localmente pelo pacote Python foodbi-etl.</p>
+            </div>
+            <div>
+              <span>Escopo</span>
+              <strong>CNPJs ativos de alimentacao</strong>
+              <p>Somente CNAEs de restaurantes, bares, lanchonetes, delivery, buffet e alimentacao correlata.</p>
+            </div>
+            <div>
+              <span>Armazenamento</span>
+              <strong>MySQL tratado</strong>
+              <p>A aplicacao web consulta apenas tabelas tratadas, agregados e coordenadas municipais.</p>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <template id="detailTemplate">
+      <div>
+        <div class="detail-header">
+          <div>
+            <h2 data-city-title></h2>
+            <p data-city-status></p>
+          </div>
+        </div>
+        <div class="category-list" data-categories></div>
+        <div class="table-tools">
+          <input data-search placeholder="Buscar estabelecimento">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Bairro</th>
+                <th>Situacao</th>
+              </tr>
+            </thead>
+            <tbody data-establishments></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <button data-prev>Anterior</button>
+          <span data-page></span>
+          <button data-next>Proxima</button>
+        </div>
+      </div>
+    </template>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
