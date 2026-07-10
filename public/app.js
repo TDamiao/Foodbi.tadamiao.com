@@ -15,11 +15,15 @@ const state = {
   rollups: [],
   stateCenters: [],
   stateRankings: [],
+  nationalRanking: [],
+  totals: null,
   mapLevel: 'state',
   mapSignature: '',
   autoUf: '',
   userMovedMap: false,
   selectedCity: null,
+  selectedCityRank: null,
+  cityCategory: '',
   markers: L.layerGroup(),
   page: 1,
   q: ''
@@ -33,7 +37,8 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 state.markers.addTo(map);
 
 const els = {
-  navButtons: document.querySelectorAll('[data-view-target]'),
+  viewTriggers: document.querySelectorAll('[data-view-target]'),
+  navButtons: document.querySelectorAll('.nav-button[data-view-target]'),
   views: document.querySelectorAll('.view'),
   ufFilter: document.querySelector('#ufFilter'),
   categoryFilter: document.querySelector('#categoryFilter'),
@@ -53,10 +58,6 @@ const els = {
   statePageTitle: document.querySelector('#statePageTitle'),
   statePageSubtitle: document.querySelector('#statePageSubtitle'),
   stateAnalysisFilter: document.querySelector('#stateAnalysisFilter'),
-  stateCitiesLabel: document.querySelector('#stateCitiesLabel'),
-  stateCategoriesLabel: document.querySelector('#stateCategoriesLabel'),
-  stateCities: document.querySelector('#stateCities'),
-  stateCategories: document.querySelector('#stateCategories'),
   topStatesLabel: document.querySelector('#topStatesLabel'),
   topStatesList: document.querySelector('#topStatesList'),
   stateRankingLabel: document.querySelector('#stateRankingLabel'),
@@ -65,13 +66,37 @@ const els = {
   stateCategoryBars: document.querySelector('#stateCategoryBars'),
   categoryBars: document.querySelector('#categoryBars'),
   categoryTotalLabel: document.querySelector('#categoryTotalLabel'),
+  insightScope: document.querySelector('#insightScope'),
+  insightGrid: document.querySelector('#insightGrid'),
+  insightCategoryTotal: document.querySelector('#insightCategoryTotal'),
+  insightCategoryBars: document.querySelector('#insightCategoryBars'),
+  insightGeoTotal: document.querySelector('#insightGeoTotal'),
+  insightGeoBars: document.querySelector('#insightGeoBars'),
+  insightCityBars: document.querySelector('#insightCityBars'),
+  insightMarketBands: document.querySelector('#insightMarketBands'),
+  insightNarratives: document.querySelector('#insightNarratives'),
   rankingList: document.querySelector('#rankingList'),
+  rankingTotalLabel: document.querySelector('#rankingTotalLabel'),
   cityDetail: document.querySelector('#cityDetail'),
   detailTemplate: document.querySelector('#detailTemplate')
 };
 
 const formatDate = (value) => value ? new Date(value).toLocaleDateString('pt-BR') : '-';
 const formatNumber = (value) => new Intl.NumberFormat('pt-BR').format(value || 0);
+const formatPercent = (value, digits = 1) => `${new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: digits,
+  maximumFractionDigits: digits
+}).format(value || 0)}%`;
+const stateRankingLimit = 50;
+const heatScale = [
+  { stop: 0, fill: '#2b83ba', stroke: '#1f5f88' },
+  { stop: .28, fill: '#44b7a5', stroke: '#2b8176' },
+  { stop: .52, fill: '#abdda4', stroke: '#6d9f66' },
+  { stop: .72, fill: '#fdae61', stroke: '#c97825' },
+  { stop: .9, fill: '#f46d43', stroke: '#b94527' },
+  { stop: 1, fill: '#d73027', stroke: '#8f1f1a' }
+];
+const chartColors = ['#1f7a5a', '#2456a6', '#d96c2c', '#8b5cf6', '#0f9f9a', '#d1495b', '#6d9f66', '#7a6a53', '#9aa3a0'];
 const stateNames = {
   AC: 'Acre',
   AL: 'Alagoas',
@@ -170,25 +195,39 @@ async function ensureStateCenters() {
   state.stateCenters = centers.filter((item) => item.latitude && item.longitude);
 }
 
+function heatColor(value, min, max) {
+  if (max <= min) return heatScale[heatScale.length - 1];
+  const minLog = Math.log10(min + 1);
+  const maxLog = Math.log10(max + 1);
+  const position = Math.max(0, Math.min(1, (Math.log10(value + 1) - minLog) / (maxLog - minLog)));
+  return heatScale.find((item) => position <= item.stop) || heatScale[heatScale.length - 1];
+}
 
 function renderMarkers() {
   state.markers.clearLayers();
   const bounds = [];
+  const totals = state.rollups
+    .map((item) => Number(item.total || 0))
+    .filter((total) => total > 0);
+  const minTotal = Math.min(...totals, 0);
+  const maxTotal = Math.max(...totals, 0);
 
   state.rollups.forEach((item) => {
     if (!item.latitude || !item.longitude || !Number(item.total)) return;
     const markerLevel = state.mapLevel;
-    const radius = Math.max(10, Math.min(42, Math.sqrt(Number(item.total)) / (markerLevel === 'city' ? 12 : 24)));
+    const total = Number(item.total);
+    const radius = Math.max(10, Math.min(42, Math.sqrt(total) / (markerLevel === 'city' ? 12 : 24)));
+    const color = heatColor(total, minTotal, maxTotal);
     const label = markerLevel === 'state'
         ? item.uf
         : `${item.name}/${item.uf}`;
     const marker = L.circleMarker([Number(item.latitude), Number(item.longitude)], {
       radius,
-      color: markerLevel === 'city' ? '#1f7a5a' : '#2456a6',
-      fillColor: markerLevel === 'city' ? '#d96c2c' : '#5d8bd9',
-      fillOpacity: 0.62,
+      color: color.stroke,
+      fillColor: color.fill,
+      fillOpacity: 0.72,
       weight: 2
-    }).bindPopup(`<strong>${label}</strong><br>${formatNumber(item.total)} estabelecimentos`);
+    }).bindPopup(`<strong>${label}</strong><br>${formatNumber(total)} estabelecimentos`);
     marker.on('click', () => handleMarkerClick(item, markerLevel));
     marker.on('dblclick', () => handleMarkerDoubleClick(item, markerLevel));
     marker.addTo(state.markers);
@@ -271,18 +310,45 @@ async function handleMarkerDoubleClick(item, markerLevel) {
 
 async function loadTotals() {
   const totals = await api('/totals');
+  state.totals = totals;
   els.totalEstablishments.textContent = formatNumber(totals.establishments);
   els.totalStates.textContent = formatNumber(totals.states);
   els.totalCities.textContent = formatNumber(totals.cities);
   els.totalCategories.textContent = formatNumber(totals.categories);
 }
 
+async function ensureTotals() {
+  if (!state.totals) {
+    state.totals = await api('/totals');
+  }
+  return state.totals;
+}
+
 async function loadRanking() {
-  const ranking = await api('/ranking/cities?limit=12');
-  els.rankingList.innerHTML = ranking.map((item) =>
+  state.nationalRanking = (await api(`/ranking/cities?limit=${stateRankingLimit}`))
+    .map((item, index) => ({ ...item, national_rank: index + 1 }));
+  renderNationalRanking();
+}
+
+function renderNationalRanking() {
+  const selectedItem = state.selectedCity && state.selectedCityRank
+    ? {
+      uf: state.selectedCity.uf,
+      city: state.selectedCity.name,
+      total: state.selectedCityRank.total,
+      national_rank: state.selectedCityRank.national_rank
+    }
+    : null;
+  const selectedKey = selectedItem ? `${selectedItem.uf}|${selectedItem.city}` : '';
+  const orderedRanking = selectedItem
+    ? [selectedItem, ...state.nationalRanking.filter((item) => `${item.uf}|${item.city}` !== selectedKey)]
+    : state.nationalRanking;
+
+  els.rankingTotalLabel.textContent = `Top ${state.nationalRanking.length}`;
+  els.rankingList.innerHTML = orderedRanking.map((item) =>
     `<li>
-      <button class="linklike" data-uf="${item.uf}" data-city="${item.city}">
-        <span>${item.city}/${item.uf}</span>
+      <button class="linklike ranked-link" data-uf="${item.uf}" data-city="${item.city}">
+        <span><b>#${formatNumber(item.national_rank)}</b> ${item.city}/${item.uf}</span>
         <strong>${formatNumber(item.total)}</strong>
       </button>
     </li>`
@@ -292,6 +358,15 @@ async function loadRanking() {
       await selectCity({ uf: button.dataset.uf, name: button.dataset.city });
       activateView('citiesView');
     });
+  });
+  updateCityRankingSelection();
+}
+
+function updateCityRankingSelection() {
+  els.rankingList.querySelectorAll('button').forEach((button) => {
+    const active = state.selectedCity?.uf === button.dataset.uf &&
+      state.selectedCity?.name === button.dataset.city;
+    button.classList.toggle('is-selected', active);
   });
 }
 
@@ -320,10 +395,195 @@ async function loadCategoryTotals() {
   });
 }
 
-function renderStateCategoryBars(categories) {
-  const total = categories.reduce((sum, item) => sum + Number(item.total || 0), 0);
+function renderInsightDonut(target, items, total, labelKey = 'category') {
+  let offset = 0;
+  const segments = items.map((item, index) => {
+    const value = Number(item.total || 0);
+    const percent = total ? (value / total) * 100 : 0;
+    const segment = {
+      ...item,
+      value,
+      percent,
+      color: chartColors[index % chartColors.length],
+      offset
+    };
+    offset += percent;
+    return segment;
+  });
+
+  target.innerHTML = `
+    <div class="donut-wrap">
+      <svg class="donut-chart" viewBox="0 0 44 44" role="img" aria-label="Distribuicao percentual">
+        <circle class="donut-bg" cx="22" cy="22" r="15.9155"></circle>
+        ${segments.map((item) => `
+          <circle
+            class="donut-segment"
+            cx="22"
+            cy="22"
+            r="15.9155"
+            stroke="${item.color}"
+            stroke-dasharray="${item.percent} ${100 - item.percent}"
+            stroke-dashoffset="${25 - item.offset}">
+          </circle>
+        `).join('')}
+      </svg>
+      <div class="donut-center">
+        <strong>${formatPercent(segments[0]?.percent || 0)}</strong>
+        <span>${segments[0]?.[labelKey] || '-'}</span>
+      </div>
+    </div>
+    <div class="donut-legend">
+      ${segments.map((item) => `
+        <div class="legend-row">
+          <span class="legend-dot" style="background: ${item.color}"></span>
+          <span>${item[labelKey]}</span>
+          <strong>${formatPercent(item.percent)}</strong>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderRankBars(target, items, total) {
+  const max = Math.max(...items.map((item) => Number(item.total || 0)), 1);
+  target.innerHTML = items.map((item, index) => {
+    const value = Number(item.total || 0);
+    const percent = total ? (value / total) * 100 : 0;
+    const width = Math.max(3, Math.round((value / max) * 100));
+    return `
+      <div class="rank-bar-row">
+        <div class="rank-bar-label">
+          <span><b>#${index + 1}</b> ${item.city}/${item.uf}</span>
+          <strong>${formatPercent(percent)}</strong>
+        </div>
+        <span class="bar-track"><span class="bar-fill" style="width: ${width}%"></span></span>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadInsights() {
+  const totals = await ensureTotals();
+  const [categories, topCities] = await Promise.all([
+    api('/categories/totals'),
+    api('/ranking/cities?limit=50')
+  ]);
+  if (!state.stateRankings.length) {
+    state.stateRankings = await api('/map/rollups?level=state');
+  }
+
+  const totalEstablishments = Number(totals.establishments || 0);
+  const topCategory = categories[0] || { category: '-', total: 0 };
+  const topTwoCategories = categories.slice(0, 2).reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const topFiveCities = topCities.slice(0, 5).reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const topState = state.stateRankings[0] || { uf: '-', total: 0 };
+  const topFiveStates = state.stateRankings.slice(0, 5).reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const averagePerCity = totalEstablishments / Math.max(Number(totals.cities || 0), 1);
+  const topTwoCategoryNames = categories.slice(0, 2).map((item) => item.category).join(' + ');
+  const topFiveCityNames = topCities.slice(0, 5).map((item) => `${item.city}/${item.uf}`).join(', ');
+  const topFiveStateNames = state.stateRankings.slice(0, 5).map((item) => item.uf).join(', ');
+  const cityBands = [
+    { label: 'Megapolos', range: '10 mil+', count: 0, total: 0 },
+    { label: 'Polos regionais', range: '2 mil a 9.999', count: 0, total: 0 },
+    { label: 'Mercado medio', range: '500 a 1.999', count: 0, total: 0 },
+    { label: 'Cauda longa', range: 'Ate 499', count: 0, total: 0 }
+  ];
+  state.cities.forEach((city) => {
+    const value = Number(city.total || 0);
+    if (value >= 10000) {
+      cityBands[0].count += 1;
+      cityBands[0].total += value;
+    } else if (value >= 2000) {
+      cityBands[1].count += 1;
+      cityBands[1].total += value;
+    } else if (value >= 500) {
+      cityBands[2].count += 1;
+      cityBands[2].total += value;
+    } else {
+      cityBands[3].count += 1;
+      cityBands[3].total += value;
+    }
+  });
+  const topTenCities = topCities.slice(0, 10).reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const topTenStates = state.stateRankings.slice(0, 10).reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const longTailCities = cityBands[3];
+
+  els.insightScope.textContent = `${formatNumber(totals.cities)} cidades | ${formatNumber(totalEstablishments)} estabelecimentos`;
+  els.insightGrid.innerHTML = `
+    <div class="insight-card is-primary">
+      <span>Categoria dominante</span>
+      <strong>${formatPercent((Number(topCategory.total || 0) / totalEstablishments) * 100)}</strong>
+      <p>${topCategory.category}: ${formatNumber(topCategory.total)} estabelecimentos ativos.</p>
+    </div>
+    <div class="insight-card">
+      <span>Dupla que puxa o setor</span>
+      <strong>${formatPercent((topTwoCategories / totalEstablishments) * 100)}</strong>
+      <p>${topTwoCategoryNames}: ${formatNumber(topTwoCategories)} estabelecimentos.</p>
+    </div>
+    <div class="insight-card">
+      <span>Concentracao urbana</span>
+      <strong>${formatPercent((topFiveCities / totalEstablishments) * 100)}</strong>
+      <p>${topFiveCityNames}: ${formatNumber(topFiveCities)} estabelecimentos.</p>
+    </div>
+    <div class="insight-card">
+      <span>Estado lider</span>
+      <strong>${formatPercent((Number(topState.total || 0) / totalEstablishments) * 100)}</strong>
+      <p>${topState.uf}: ${formatNumber(topState.total)} estabelecimentos.</p>
+    </div>
+    <div class="insight-card">
+      <span>Top 5 estados</span>
+      <strong>${formatPercent((topFiveStates / totalEstablishments) * 100)}</strong>
+      <p>${topFiveStateNames}: ${formatNumber(topFiveStates)} estabelecimentos.</p>
+    </div>
+    <div class="insight-card">
+      <span>Densidade media</span>
+      <strong>${formatNumber(Math.round(averagePerCity))}</strong>
+      <p>${formatNumber(totalEstablishments)} estabelecimentos em ${formatNumber(totals.cities)} cidades.</p>
+    </div>
+  `;
+
+  els.insightCategoryTotal.textContent = `${formatNumber(categories.length)} categorias`;
+  renderInsightDonut(els.insightCategoryBars, categories, totalEstablishments);
+  els.insightGeoTotal.textContent = `${formatNumber(state.stateRankings.length)} estados`;
+  const geoSlices = state.stateRankings.slice(0, 8).map((item) => ({ name: `${item.uf} - ${stateName(item.uf)}`, total: item.total }));
+  const geoOthers = state.stateRankings.slice(8).reduce((sum, item) => sum + Number(item.total || 0), 0);
+  if (geoOthers) geoSlices.push({ name: 'Outros estados', total: geoOthers });
+  renderInsightDonut(
+    els.insightGeoBars,
+    geoSlices,
+    totalEstablishments,
+    'name'
+  );
+  renderRankBars(els.insightCityBars, topCities.slice(0, 8), totalEstablishments);
+  els.insightMarketBands.innerHTML = cityBands.map((band) => `
+    <div class="band-card">
+      <span>${band.label}</span>
+      <strong>${formatPercent((band.total / totalEstablishments) * 100)}</strong>
+      <p>${formatNumber(band.count)} cidades | ${band.range}</p>
+    </div>
+  `).join('');
+  els.insightNarratives.innerHTML = `
+    <div>
+      <span>Top 10 cidades</span>
+      <strong>${formatPercent((topTenCities / totalEstablishments) * 100)}</strong>
+      <p>Uma pequena elite urbana concentra demanda, oferta e concorrencia.</p>
+    </div>
+    <div>
+      <span>Top 10 estados</span>
+      <strong>${formatPercent((topTenStates / totalEstablishments) * 100)}</strong>
+      <p>A expansao tende a seguir renda, populacao e densidade empresarial.</p>
+    </div>
+    <div>
+      <span>Cauda longa</span>
+      <strong>${formatPercent((longTailCities.total / totalEstablishments) * 100)}</strong>
+      <p>${formatNumber(longTailCities.count)} cidades pequenas sustentam capilaridade nacional.</p>
+    </div>
+  `;
+}
+
+function renderStateCategoryBars(categories, categoryCount = categories.length) {
   const max = Math.max(...categories.map((item) => Number(item.total || 0)), 1);
-  els.stateCategoryLabel.textContent = formatNumber(total);
+  els.stateCategoryLabel.textContent = `Categorias: ${formatNumber(categoryCount)}`;
   els.stateCategoryBars.innerHTML = categories.map((item) => {
     const percent = Math.max(2, Math.round((Number(item.total || 0) / max) * 100));
     return `
@@ -340,13 +600,14 @@ function renderStateCategoryBars(categories) {
 
 function renderTopStates() {
   const selectedUf = els.stateAnalysisFilter.value;
-  const topStates = state.stateRankings.slice(0, 10);
   const selectedState = selectedUf ? state.stateRankings.find((item) => item.uf === selectedUf) : null;
   const orderedStates = selectedState
-    ? [selectedState, ...topStates.filter((item) => item.uf !== selectedUf).slice(0, 9)]
-    : topStates;
+    ? [selectedState, ...state.stateRankings.filter((item) => item.uf !== selectedUf)]
+    : state.stateRankings;
 
-  els.topStatesLabel.textContent = `Estabelecimentos por estados: ${formatNumber(state.stateRankings.reduce((sum, item) => sum + Number(item.total || 0), 0))}`;
+  const total = state.totals?.establishments ??
+    state.stateRankings.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  els.topStatesLabel.textContent = `Total: ${formatNumber(total)}`;
   els.topStatesList.innerHTML = orderedStates.map((item) => {
     const rankPosition = state.stateRankings.findIndex((stateItem) => stateItem.uf === item.uf) + 1;
     return `
@@ -371,20 +632,16 @@ async function loadStateAnalysis() {
   if (!state.stateRankings.length) {
     state.stateRankings = await api('/map/rollups?level=state');
   }
+  const totals = await ensureTotals();
   renderTopStates();
 
   const uf = els.stateAnalysisFilter.value;
   if (!uf) {
-    const totals = await api('/totals');
     const categories = await api('/categories/totals');
-    const topCities = await api('/ranking/cities?limit=10');
+    const topCities = await api(`/ranking/cities?limit=${stateRankingLimit}`);
     els.statePageTitle.textContent = 'Todos os estados';
     els.statePageSubtitle.textContent = 'Ranking estadual dos estabelecimentos ativos de alimentacao.';
-    els.stateCitiesLabel.textContent = 'Cidades mapeadas';
-    els.stateCategoriesLabel.textContent = 'Categorias mapeadas';
-    els.stateCities.textContent = formatNumber(totals.cities);
-    els.stateCategories.textContent = formatNumber(totals.categories);
-    els.stateRankingLabel.textContent = 'Brasil';
+    els.stateRankingLabel.textContent = `Cidades: ${formatNumber(totals.cities)}`;
     els.stateRankingList.innerHTML = topCities.map((item, index) => `
       <li>
         <button class="linklike ranked-link" data-uf="${item.uf}" data-city="${item.city}">
@@ -399,7 +656,7 @@ async function loadStateAnalysis() {
         activateView('citiesView');
       });
     });
-    renderStateCategoryBars(categories);
+    renderStateCategoryBars(categories, totals.categories);
     return;
   }
 
@@ -407,12 +664,8 @@ async function loadStateAnalysis() {
   const rankPosition = state.stateRankings.findIndex((item) => item.uf === uf) + 1;
   els.statePageTitle.textContent = `#${rankPosition || '-'} ${stateName(uf)} (${uf})`;
   els.statePageSubtitle.textContent = 'Top cidades e categorias mais relevantes no estado.';
-  els.stateCitiesLabel.textContent = 'Cidades do estado';
-  els.stateCategoriesLabel.textContent = 'Categorias no estado';
-  els.stateCities.textContent = formatNumber(data.summary.cities);
-  els.stateCategories.textContent = formatNumber(data.summary.categories);
-  els.stateRankingLabel.textContent = uf;
-  els.stateRankingList.innerHTML = data.topCities.slice(0, 10).map((item, index) => `
+  els.stateRankingLabel.textContent = `Cidades: ${formatNumber(data.summary.cities)}`;
+  els.stateRankingList.innerHTML = data.topCities.map((item, index) => `
     <li>
       <button class="linklike ranked-link" data-uf="${item.uf}" data-city="${item.city}">
         <span><b>#${index + 1}</b> ${item.city}/${item.uf}</span>
@@ -426,7 +679,7 @@ async function loadStateAnalysis() {
       activateView('citiesView');
     });
   });
-  renderStateCategoryBars(data.categories);
+  renderStateCategoryBars(data.categories, data.summary.categories);
 }
 
 async function loadCities() {
@@ -453,8 +706,11 @@ async function loadSources() {
 
 async function selectCity(city) {
   state.selectedCity = city;
+  state.selectedCityRank = null;
+  state.cityCategory = '';
   state.page = 1;
   state.q = '';
+  renderNationalRanking();
   await renderCityDetail();
 }
 
@@ -463,6 +719,17 @@ async function renderCityDetail() {
   const fragment = els.detailTemplate.content.cloneNode(true);
   const root = fragment.querySelector('div');
   root.querySelector('[data-city-title]').textContent = `${city.name}/${city.uf}`;
+  const rankLabel = root.querySelector('[data-city-rank]');
+  rankLabel.textContent = 'Ranking nacional';
+
+  try {
+    const rank = await api(`/cities/${encodeURIComponent(city.uf)}/${encodeURIComponent(city.name)}/rank`);
+    state.selectedCityRank = rank;
+    rankLabel.textContent = `#${formatNumber(rank.national_rank)} no ranking nacional`;
+    renderNationalRanking();
+  } catch {
+    rankLabel.textContent = 'Sem ranking nacional';
+  }
 
   let statusText = 'Dados importados da Receita Federal.';
   try {
@@ -481,18 +748,36 @@ async function renderCityDetail() {
 
   const categories = await api(`/cities/${encodeURIComponent(city.uf)}/${encodeURIComponent(city.name)}/aggregates`);
   root.querySelector('[data-categories]').innerHTML = categories.map((item) =>
-    `<span class="chip">${item.category}: ${formatNumber(item.total)}</span>`
+    `<button class="chip category-chip${state.cityCategory === item.category ? ' is-selected' : ''}" data-category="${item.category}" type="button">${item.category}: ${formatNumber(item.total)}</button>`
   ).join('') || '<span class="chip">Sem agregados salvos</span>';
+  root.querySelectorAll('[data-category]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      state.cityCategory = state.cityCategory === button.dataset.category ? '' : button.dataset.category;
+      state.page = 1;
+      await renderCityDetail();
+    });
+  });
 
   const search = root.querySelector('[data-search]');
+  const searchButton = root.querySelector('[data-search-button]');
   search.value = state.q;
-  search.addEventListener('input', async () => {
+  const runEstablishmentSearch = async () => {
     state.q = search.value;
     state.page = 1;
     await renderCityDetail();
+  };
+  searchButton.addEventListener('click', runEstablishmentSearch);
+  search.addEventListener('keydown', async (event) => {
+    if (event.key === 'Enter') await runEstablishmentSearch();
   });
 
-  const establishments = await api(`/cities/${encodeURIComponent(city.uf)}/${encodeURIComponent(city.name)}/establishments?page=${state.page}&pageSize=15&q=${encodeURIComponent(state.q)}`);
+  const establishmentParams = new URLSearchParams({
+    page: String(state.page),
+    pageSize: '15',
+    q: state.q
+  });
+  if (state.cityCategory) establishmentParams.set('category', state.cityCategory);
+  const establishments = await api(`/cities/${encodeURIComponent(city.uf)}/${encodeURIComponent(city.name)}/establishments?${establishmentParams.toString()}`);
   root.querySelector('[data-establishments]').innerHTML = establishments.data.map((item) => `
     <tr>
       <td>${item.trade_name && item.trade_name !== '-' ? item.trade_name : item.legal_name || '-'}</td>
@@ -540,6 +825,7 @@ async function searchImportedCity() {
 
 async function refreshAll() {
   await Promise.all([loadTotals(), loadRanking(), loadCities(), loadSources(), loadCategoryTotals()]);
+  await loadInsights();
 }
 
 els.cityPageSearchButton.addEventListener('click', searchImportedCity);
@@ -565,6 +851,10 @@ els.stateAnalysisFilter.addEventListener('change', loadStateAnalysis);
 els.navButtons.forEach((button) => {
   button.addEventListener('click', () => activateView(button.dataset.viewTarget));
 });
+els.viewTriggers.forEach((trigger) => {
+  if (trigger.classList.contains('nav-button')) return;
+  trigger.addEventListener('click', () => activateView(trigger.dataset.viewTarget));
+});
 map.on('zoomend', async () => {
   state.userMovedMap = true;
   await loadMapRollups();
@@ -578,3 +868,4 @@ map.on('moveend', async () => {
 state.categories = await api('/cnaes');
 fillCategoryFilter();
 await refreshAll();
+await selectCity({ uf: 'SP', name: 'SAO PAULO' });

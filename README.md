@@ -1,6 +1,6 @@
-# FoodBI Map
+# FoodBI
 
-FoodBI Map e um MVP open-source em Node.js + MySQL para mapear estabelecimentos de alimentacao por cidade, com backend proprio, MySQL como base tratada e frontend simples com Leaflet.
+FoodBI e um MVP open-source em Node.js + MySQL para analisar estabelecimentos de alimentacao por cidade, com backend proprio, MySQL como base tratada e frontend simples com Leaflet.
 
 O projeto comecou validando APIs publicas de CNPJ, mas a carga regional completa foi implementada em um subprojeto ETL local separado, usando os ZIPs oficiais da Receita Federal na maquina do operador. A aplicacao web consulta apenas o MySQL tratado, sem BigQuery e sem depender de arquivos brutos na VPS.
 

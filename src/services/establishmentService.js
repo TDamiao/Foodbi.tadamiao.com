@@ -34,6 +34,25 @@ export async function cityAggregates({ uf, city }) {
   );
 }
 
+export async function cityNationalRank({ uf, city }) {
+  const rows = await query(
+    `SELECT national_rank, total
+     FROM (
+       SELECT
+         uf,
+         municipality,
+         SUM(total) AS total,
+         ROW_NUMBER() OVER (ORDER BY SUM(total) DESC, uf, municipality) AS national_rank
+       FROM city_aggregates
+       GROUP BY uf, municipality
+     ) ranked
+     WHERE uf = :uf AND municipality = :city
+     LIMIT 1`,
+    { uf, city }
+  );
+  return rows[0] || null;
+}
+
 export async function totals() {
   const rows = await query(
     `SELECT
@@ -135,7 +154,7 @@ export async function stateAnalysis(uf) {
      GROUP BY uf`,
     params
   );
-  const topCities = await ranking(12, uf);
+  const topCities = await ranking(50, uf);
   const categories = await query(
     `SELECT category, SUM(total) AS total
      FROM city_aggregates

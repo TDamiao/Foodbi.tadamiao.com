@@ -37,5 +37,5 @@ if (env.dailyJobCron) {
 }
 
 app.listen(env.port, () => {
-  logger.info({ port: env.port }, 'FoodBI Map iniciado');
+  logger.info({ port: env.port }, 'FoodBI iniciado');
 });

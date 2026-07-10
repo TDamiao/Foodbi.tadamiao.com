@@ -3,14 +3,68 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FoodBI Map</title>
+    <title>FoodBI | Inteligencia de mercado para alimentacao no Brasil</title>
+    <meta name="description" content="FoodBI analisa estabelecimentos ativos de alimentacao no Brasil com dados publicos de CNPJ da Receita Federal, rankings por cidade e estado, categorias, mapas e insights de mercado.">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="FoodBI">
+    <meta name="keywords" content="FoodBI, mercado de alimentacao, restaurantes Brasil, bares Brasil, lanchonetes, delivery, CNPJ, Receita Federal, inteligencia de mercado, dados abertos, mapa de estabelecimentos">
+    <link rel="canonical" href="https://foodbi.tdamiao.com/">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:site_name" content="FoodBI">
+    <meta property="og:title" content="FoodBI | Inteligencia de mercado para alimentacao no Brasil">
+    <meta property="og:description" content="Mapas, rankings e insights sobre estabelecimentos ativos de alimentacao no Brasil a partir dos dados publicos de CNPJ da Receita Federal.">
+    <meta property="og:url" content="https://foodbi.tdamiao.com/">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="FoodBI | Inteligencia de mercado para alimentacao no Brasil">
+    <meta name="twitter:description" content="Dados, mapas e insights de estabelecimentos ativos de alimentacao no Brasil.">
+    <meta name="theme-color" content="#1f2a24">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f2a24'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='Arial,sans-serif' font-size='22' font-weight='700' fill='white'%3EFB%3C/text%3E%3C/svg%3E">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "FoodBI",
+        "url": "https://foodbi.tdamiao.com/",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "description": "Inteligencia de mercado para estabelecimentos de alimentacao no Brasil com dados publicos de CNPJ da Receita Federal.",
+        "inLanguage": "pt-BR",
+        "isAccessibleForFree": true,
+        "about": [
+          "estabelecimentos de alimentacao",
+          "dados publicos de CNPJ",
+          "inteligencia de mercado",
+          "Receita Federal Dados Abertos"
+        ],
+        "creator": {
+          "@type": "Organization",
+          "name": "FoodBI"
+        }
+      }
+    </script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6WXB0QGQ27"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-6WXB0QGQ27');
+    </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
     <header class="topbar">
-      <div>
-        <h1>FoodBI Map</h1>
+      <button class="brand" type="button" data-view-target="mapView" aria-label="Ir para o mapa">
+        <span class="brand-copy">
+          <strong>FoodBI</strong>
+          <span>Inteligencia territorial de alimentacao</span>
+        </span>
+      </button>
+      <div class="topbar-title">
+        <h1>FoodBI</h1>
         <p>Inteligencia territorial de estabelecimentos ativos de alimentacao.</p>
       </div>
       <nav class="app-nav" aria-label="Navegacao principal">
@@ -23,6 +77,7 @@
         <span>Receita Federal CNPJ 2026-06</span>
         <strong id="sourceDate">-</strong>
       </div>
+      <button class="doc-link" type="button" data-view-target="docsView">Documentacao</button>
     </header>
 
     <main>
@@ -72,6 +127,11 @@
             <div class="map-empty" id="mapEmpty" hidden>
               Nenhum ponto encontrado para os filtros atuais.
             </div>
+            <div class="map-heat-legend" aria-label="Concentracao de estabelecimentos">
+              <span>Menor</span>
+              <span class="heat-gradient"></span>
+              <span>Maior</span>
+            </div>
           </div>
           <aside class="map-summary">
             <section>
@@ -97,16 +157,6 @@
                 Estado
                 <select id="stateAnalysisFilter"></select>
               </label>
-            </div>
-          </div>
-          <div class="state-kpis">
-            <div class="metric">
-              <span id="stateCitiesLabel">Cidades</span>
-              <strong id="stateCities">0</strong>
-            </div>
-            <div class="metric">
-              <span id="stateCategoriesLabel">Categorias</span>
-              <strong id="stateCategories">0</strong>
             </div>
           </div>
           <div class="state-grid">
@@ -143,7 +193,7 @@
           </div>
           <div class="section-title">
             <h2>Ranking nacional</h2>
-            <span>Top cidades</span>
+            <span id="rankingTotalLabel">Top cidades</span>
           </div>
           <ol id="rankingList" class="ranking"></ol>
         </aside>
@@ -156,27 +206,132 @@
 
       <section class="view content-view" id="dataView" hidden>
         <section class="data-panel">
-          <div class="section-title">
-            <h2>Base e metodologia</h2>
-            <span>Open-source</span>
+          <div class="insight-hero">
+            <div>
+              <span>Panorama nacional</span>
+              <h2>Insights do mercado de alimentacao</h2>
+            </div>
+            <strong id="insightScope">Brasil</strong>
           </div>
-          <div class="data-grid">
-            <div>
-              <span>Fonte principal</span>
-              <strong>Receita Federal Dados Abertos CNPJ</strong>
-              <p>Competencia 2026-06, processada localmente pelo pacote Python foodbi-etl.</p>
-            </div>
-            <div>
-              <span>Escopo</span>
-              <strong>CNPJs ativos de alimentacao</strong>
-              <p>Somente CNAEs de restaurantes, bares, lanchonetes, delivery, buffet e alimentacao correlata.</p>
-            </div>
-            <div>
-              <span>Armazenamento</span>
-              <strong>MySQL tratado</strong>
-              <p>A aplicacao web consulta apenas tabelas tratadas, agregados e coordenadas municipais.</p>
-            </div>
+          <div id="insightGrid" class="data-grid insight-grid"></div>
+          <div class="insight-panels">
+            <section>
+              <div class="section-title">
+                <h2>Mix nacional</h2>
+                <span id="insightCategoryTotal">-</span>
+              </div>
+              <div id="insightCategoryBars" class="donut-panel"></div>
+            </section>
+            <section>
+              <div class="section-title">
+                <h2>Concentracao geografica</h2>
+                <span id="insightGeoTotal">-</span>
+              </div>
+              <div id="insightGeoBars" class="donut-panel"></div>
+            </section>
           </div>
+          <div class="insight-deep-grid">
+            <section>
+              <div class="section-title">
+                <h2>Polos urbanos</h2>
+                <span>Top 8</span>
+              </div>
+              <div id="insightCityBars" class="insight-rank-bars"></div>
+            </section>
+            <section>
+              <div class="section-title">
+                <h2>Faixas de mercado</h2>
+                <span>Cidades</span>
+              </div>
+              <div id="insightMarketBands" class="insight-band-list"></div>
+            </section>
+            <section>
+              <div class="section-title">
+                <h2>Leitura rapida</h2>
+                <span>Insights</span>
+              </div>
+              <div id="insightNarratives" class="insight-narratives"></div>
+            </section>
+          </div>
+        </section>
+      </section>
+
+      <section class="view content-view docs-view" id="docsView" hidden>
+        <section class="docs-panel">
+          <div class="docs-hero">
+            <div>
+              <span>Documentacao do projeto</span>
+              <h2>Como o FoodBI monta esta base</h2>
+              <p>Resumo das fontes, filtros e regras usadas para transformar dados publicos de CNPJ em inteligencia de mercado para alimentacao no Brasil.</p>
+            </div>
+            <a href="https://arquivos.receitafederal.gov.br/" target="_blank" rel="noreferrer">Fonte oficial</a>
+          </div>
+
+          <div class="docs-grid">
+            <section>
+              <span>Fonte primaria</span>
+              <h3>Receita Federal Dados Abertos CNPJ</h3>
+              <p>Os arquivos brutos sao baixados do repositorio publico da Receita Federal em ZIPs por competencia. A carga atual usa a competencia 2026-06.</p>
+            </section>
+            <section>
+              <span>Recorte da base</span>
+              <h3>Somente estabelecimentos ativos</h3>
+              <p>O ETL importa apenas estabelecimentos com situacao cadastral ativa na Receita Federal. Registros baixados, suspensos, inaptos ou nulos ficam fora dos indicadores.</p>
+            </section>
+            <section>
+              <span>Unidade analisada</span>
+              <h3>Estabelecimento por CNPJ</h3>
+              <p>A contagem usa CNPJ de estabelecimento, nao grupo economico. Uma empresa com varias unidades pode aparecer em varias cidades.</p>
+            </section>
+          </div>
+
+          <div class="docs-flow">
+            <section>
+              <div class="section-title">
+                <h2>Pipeline de tratamento</h2>
+                <span>ETL local</span>
+              </div>
+              <ol class="docs-steps">
+                <li><b>Download</b><span>Arquivos publicos de empresas, estabelecimentos, municipios e CNAEs da Receita Federal.</span></li>
+                <li><b>Filtro</b><span>Situacao ativa e CNAEs de alimentacao definidos pelo FoodBI.</span></li>
+                <li><b>Normalizacao</b><span>Padronizacao de municipio, UF, categoria, nome fantasia, razao social e endereco.</span></li>
+                <li><b>Agregacao</b><span>Totais por cidade, estado, categoria e ranking nacional.</span></li>
+                <li><b>Publicacao</b><span>O app consulta somente tabelas tratadas no MySQL.</span></li>
+              </ol>
+            </section>
+
+            <section>
+              <div class="section-title">
+                <h2>CNAEs incluidos</h2>
+                <span>8 grupos</span>
+              </div>
+              <div class="docs-cnaes">
+                <div><b>5611201</b><span>Restaurante</span></div>
+                <div><b>5611203</b><span>Lanchonete</span></div>
+                <div><b>5611204</b><span>Bar</span></div>
+                <div><b>5611205</b><span>Bar com entretenimento</span></div>
+                <div><b>5620101</b><span>Alimentacao para empresas</span></div>
+                <div><b>5620102</b><span>Buffet/eventos</span></div>
+                <div><b>5620103</b><span>Cantina</span></div>
+                <div><b>5620104</b><span>Delivery/marmita</span></div>
+              </div>
+            </section>
+          </div>
+
+          <section class="docs-notes">
+            <div>
+              <h3>O que estes dados respondem</h3>
+              <p>Distribuicao territorial, concentracao por categoria, rankings de cidades e estados, peso de polos urbanos e leitura de capilaridade do setor.</p>
+            </div>
+            <div>
+              <h3>Limites importantes</h3>
+              <p>Os dados representam cadastro oficial ativo, nao faturamento, fluxo de clientes, ticket medio, horario de funcionamento ou qualidade operacional.</p>
+            </div>
+            <div>
+              <h3>Atualizacao</h3>
+              <p>A base depende da competencia publicada pela Receita Federal e da execucao local do ETL. Cada carga preserva metadata da data de processamento.</p>
+            </div>
+          </section>
         </section>
       </section>
     </main>
@@ -185,6 +340,7 @@
       <div>
         <div class="detail-header">
           <div>
+            <span class="city-rank" data-city-rank></span>
             <h2 data-city-title></h2>
             <p data-city-status></p>
           </div>
@@ -192,6 +348,7 @@
         <div class="category-list" data-categories></div>
         <div class="table-tools">
           <input data-search placeholder="Buscar estabelecimento">
+          <button data-search-button type="button">Buscar</button>
         </div>
         <div class="table-wrap">
           <table>

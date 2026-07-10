@@ -1,7 +1,7 @@
 {
-  "name": "foodbi-map",
+  "name": "foodbi",
   "version": "0.1.0",
-  "description": "Mapa interativo de estabelecimentos de alimentacao por cidade usando Node.js, MySQL e APIs publicas de CNPJ.",
+  "description": "Inteligencia de mercado para estabelecimentos de alimentacao usando Node.js, MySQL e dados publicos de CNPJ.",
   "type": "module",
   "main": "src/server.js",
   "scripts": {

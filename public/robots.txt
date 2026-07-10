@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://foodbi.tdamiao.com/sitemap.xml

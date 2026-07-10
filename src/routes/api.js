@@ -5,13 +5,13 @@ import { listSources } from '../services/sources/index.js';
 import { listCities, searchCities, findCity } from '../services/cityService.js';
 import { requestCityCollection } from '../services/collectionService.js';
 import { getCityStatus } from '../services/etlService.js';
-import { categoryTotals, cityAggregates, listEstablishments, mapRollups, ranking, stateAnalysis, totals } from '../services/establishmentService.js';
+import { categoryTotals, cityAggregates, cityNationalRank, listEstablishments, mapRollups, ranking, stateAnalysis, totals } from '../services/establishmentService.js';
 
 export const apiRouter = Router();
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 
 apiRouter.get('/health', (req, res) => {
-  res.json({ ok: true, name: 'FoodBI Map' });
+  res.json({ ok: true, name: 'FoodBI' });
 });
 
 apiRouter.get('/sources', asyncRoute(async (req, res) => {
@@ -58,6 +58,12 @@ apiRouter.get('/cities/:uf/:city/status', asyncRoute(async (req, res) => {
 
 apiRouter.get('/cities/:uf/:city/aggregates', asyncRoute(async (req, res) => {
   res.json(await cityAggregates({ uf: req.params.uf.toUpperCase(), city: req.params.city }));
+}));
+
+apiRouter.get('/cities/:uf/:city/rank', asyncRoute(async (req, res) => {
+  const rank = await cityNationalRank({ uf: req.params.uf.toUpperCase(), city: req.params.city });
+  if (!rank) throw new HttpError(404, 'Cidade sem ranking nacional.');
+  res.json(rank);
 }));
 
 apiRouter.get('/cities/:uf/:city/categories', asyncRoute(async (req, res) => {
