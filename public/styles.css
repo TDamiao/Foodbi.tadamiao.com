@@ -174,6 +174,13 @@ h2 {
   line-height: 1.45;
 }
 
+.docs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .docs-hero a {
   display: inline-flex;
   align-items: center;
@@ -1358,6 +1365,10 @@ th {
   .docs-hero {
     align-items: start;
     flex-direction: column;
+  }
+
+  .docs-actions {
+    justify-content: flex-start;
   }
 
   .docs-grid,
