@@ -94,6 +94,19 @@ Com arquivos baixados manualmente:
 python -m foodbi_etl full-load --local-dir downloads/2026-06
 ```
 
+No macOS, tambem pode executar a carga completa pelo arquivo interativo:
+
+```bash
+./rodar-carga.command
+```
+
+Ele lista as pastas dentro de `downloads`, pergunta a competencia desejada, por exemplo `2026-07`, valida se existem arquivos `.zip`, roda a carga completa e depois atualiza as coordenadas municipais para habilitar estados/cidades no mapa:
+
+```bash
+.venv/bin/python -m foodbi_etl full-load --local-dir downloads/2026-07
+.venv/bin/python -m foodbi_etl import-coords /tmp/foodbi-municipios.csv
+```
+
 Para retomar uma carga interrompida sem atualizar CNPJs que ja foram inseridos:
 
 ```bash
