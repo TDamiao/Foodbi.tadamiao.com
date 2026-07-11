@@ -325,6 +325,12 @@ h2 {
   padding: 18px;
 }
 
+#citiesView.active {
+  height: calc(100vh - 74px);
+  min-height: 0;
+  overflow: hidden;
+}
+
 #docsView.active {
   display: block;
   min-height: calc(100vh - 74px);
@@ -693,6 +699,10 @@ button:disabled {
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+#citiesView .list-panel {
+  overflow: hidden;
 }
 
 .list-panel > .ranking {
@@ -1277,6 +1287,15 @@ th {
   .state-header,
   .state-grid {
     grid-template-columns: 1fr;
+  }
+
+  #citiesView.active {
+    height: auto;
+    overflow: visible;
+  }
+
+  #citiesView .list-panel {
+    max-height: min(620px, 70vh);
   }
 
   .map-layout {

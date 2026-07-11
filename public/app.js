@@ -87,6 +87,12 @@ const formatPercent = (value, digits = 1) => `${new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: digits,
   maximumFractionDigits: digits
 }).format(value || 0)}%`;
+const escapeHtml = (value) => String(value ?? '')
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#039;');
 const stateRankingLimit = 50;
 const heatScale = [
   { stop: 0, fill: '#2b83ba', stroke: '#1f5f88' },
@@ -143,9 +149,9 @@ function activateView(viewId) {
 function fillUfFilter() {
   const ufs = state.allUfs.length ? state.allUfs : [...new Set(state.cities.map((city) => city.uf))].sort();
   const selectedState = els.stateAnalysisFilter.value || '';
-  els.ufFilter.innerHTML = '<option value="">Todas</option>' + ufs.map((uf) => `<option value="${uf}">${uf}</option>`).join('');
+  els.ufFilter.innerHTML = '<option value="">Todas</option>' + ufs.map((uf) => `<option value="${escapeHtml(uf)}">${escapeHtml(uf)}</option>`).join('');
   els.stateAnalysisFilter.innerHTML = '<option value="">Todos os estados</option>' +
-    ufs.map((uf) => `<option value="${uf}">${uf} - ${stateName(uf)}</option>`).join('');
+    ufs.map((uf) => `<option value="${escapeHtml(uf)}">${escapeHtml(uf)} - ${escapeHtml(stateName(uf))}</option>`).join('');
   if (ufs.includes(selectedState)) {
     els.stateAnalysisFilter.value = selectedState;
   } else {
@@ -155,7 +161,7 @@ function fillUfFilter() {
 
 function fillCategoryFilter() {
   els.categoryFilter.innerHTML = '<option value="">Todas</option>' +
-    state.categories.map((item) => `<option value="${item.category}">${item.category}</option>`).join('');
+    state.categories.map((item) => `<option value="${escapeHtml(item.category)}">${escapeHtml(item.category)}</option>`).join('');
 }
 
 function renderFilterState() {
@@ -227,7 +233,7 @@ function renderMarkers() {
       fillColor: color.fill,
       fillOpacity: 0.72,
       weight: 2
-    }).bindPopup(`<strong>${label}</strong><br>${formatNumber(total)} estabelecimentos`);
+    }).bindPopup(`<strong>${escapeHtml(label)}</strong><br>${formatNumber(total)} estabelecimentos`);
     marker.on('click', () => handleMarkerClick(item, markerLevel));
     marker.on('dblclick', () => handleMarkerDoubleClick(item, markerLevel));
     marker.addTo(state.markers);
@@ -347,8 +353,8 @@ function renderNationalRanking() {
   els.rankingTotalLabel.textContent = `Top ${state.nationalRanking.length}`;
   els.rankingList.innerHTML = orderedRanking.map((item) =>
     `<li>
-      <button class="linklike ranked-link" data-uf="${item.uf}" data-city="${item.city}">
-        <span><b>#${formatNumber(item.national_rank)}</b> ${item.city}/${item.uf}</span>
+      <button class="linklike ranked-link" data-uf="${escapeHtml(item.uf)}" data-city="${escapeHtml(item.city)}">
+        <span><b>#${formatNumber(item.national_rank)}</b> ${escapeHtml(item.city)}/${escapeHtml(item.uf)}</span>
         <strong>${formatNumber(item.total)}</strong>
       </button>
     </li>`
@@ -378,9 +384,9 @@ async function loadCategoryTotals() {
   els.categoryBars.innerHTML = categories.map((item) => {
     const percent = Math.max(2, Math.round((Number(item.total || 0) / max) * 100));
     return `
-      <button class="bar-row" data-category="${item.category}">
+      <button class="bar-row" data-category="${escapeHtml(item.category)}">
         <span class="bar-heading">
-          <span>${item.category}</span>
+          <span>${escapeHtml(item.category)}</span>
           <strong>${formatNumber(item.total)}</strong>
         </span>
         <span class="bar-track"><span class="bar-fill" style="width: ${percent}%"></span></span>
@@ -429,14 +435,14 @@ function renderInsightDonut(target, items, total, labelKey = 'category') {
       </svg>
       <div class="donut-center">
         <strong>${formatPercent(segments[0]?.percent || 0)}</strong>
-        <span>${segments[0]?.[labelKey] || '-'}</span>
+        <span>${escapeHtml(segments[0]?.[labelKey] || '-')}</span>
       </div>
     </div>
     <div class="donut-legend">
       ${segments.map((item) => `
         <div class="legend-row">
           <span class="legend-dot" style="background: ${item.color}"></span>
-          <span>${item[labelKey]}</span>
+          <span>${escapeHtml(item[labelKey])}</span>
           <strong>${formatPercent(item.percent)}</strong>
         </div>
       `).join('')}
@@ -453,7 +459,7 @@ function renderRankBars(target, items, total) {
     return `
       <div class="rank-bar-row">
         <div class="rank-bar-label">
-          <span><b>#${index + 1}</b> ${item.city}/${item.uf}</span>
+          <span><b>#${index + 1}</b> ${escapeHtml(item.city)}/${escapeHtml(item.uf)}</span>
           <strong>${formatPercent(percent)}</strong>
         </div>
         <span class="bar-track"><span class="bar-fill" style="width: ${width}%"></span></span>
@@ -513,27 +519,27 @@ async function loadInsights() {
     <div class="insight-card is-primary">
       <span>Categoria dominante</span>
       <strong>${formatPercent((Number(topCategory.total || 0) / totalEstablishments) * 100)}</strong>
-      <p>${topCategory.category}: ${formatNumber(topCategory.total)} estabelecimentos ativos.</p>
+      <p>${escapeHtml(topCategory.category)}: ${formatNumber(topCategory.total)} estabelecimentos ativos.</p>
     </div>
     <div class="insight-card">
       <span>Dupla que puxa o setor</span>
       <strong>${formatPercent((topTwoCategories / totalEstablishments) * 100)}</strong>
-      <p>${topTwoCategoryNames}: ${formatNumber(topTwoCategories)} estabelecimentos.</p>
+      <p>${escapeHtml(topTwoCategoryNames)}: ${formatNumber(topTwoCategories)} estabelecimentos.</p>
     </div>
     <div class="insight-card">
       <span>Concentracao urbana</span>
       <strong>${formatPercent((topFiveCities / totalEstablishments) * 100)}</strong>
-      <p>${topFiveCityNames}: ${formatNumber(topFiveCities)} estabelecimentos.</p>
+      <p>${escapeHtml(topFiveCityNames)}: ${formatNumber(topFiveCities)} estabelecimentos.</p>
     </div>
     <div class="insight-card">
       <span>Estado lider</span>
       <strong>${formatPercent((Number(topState.total || 0) / totalEstablishments) * 100)}</strong>
-      <p>${topState.uf}: ${formatNumber(topState.total)} estabelecimentos.</p>
+      <p>${escapeHtml(topState.uf)}: ${formatNumber(topState.total)} estabelecimentos.</p>
     </div>
     <div class="insight-card">
       <span>Top 5 estados</span>
       <strong>${formatPercent((topFiveStates / totalEstablishments) * 100)}</strong>
-      <p>${topFiveStateNames}: ${formatNumber(topFiveStates)} estabelecimentos.</p>
+      <p>${escapeHtml(topFiveStateNames)}: ${formatNumber(topFiveStates)} estabelecimentos.</p>
     </div>
     <div class="insight-card">
       <span>Densidade media</span>
@@ -557,9 +563,9 @@ async function loadInsights() {
   renderRankBars(els.insightCityBars, topCities.slice(0, 8), totalEstablishments);
   els.insightMarketBands.innerHTML = cityBands.map((band) => `
     <div class="band-card">
-      <span>${band.label}</span>
+      <span>${escapeHtml(band.label)}</span>
       <strong>${formatPercent((band.total / totalEstablishments) * 100)}</strong>
-      <p>${formatNumber(band.count)} cidades | ${band.range}</p>
+      <p>${formatNumber(band.count)} cidades | ${escapeHtml(band.range)}</p>
     </div>
   `).join('');
   els.insightNarratives.innerHTML = `
@@ -587,9 +593,9 @@ function renderStateCategoryBars(categories, categoryCount = categories.length) 
   els.stateCategoryBars.innerHTML = categories.map((item) => {
     const percent = Math.max(2, Math.round((Number(item.total || 0) / max) * 100));
     return `
-      <button class="bar-row" data-category="${item.category}">
+      <button class="bar-row" data-category="${escapeHtml(item.category)}">
         <span class="bar-heading">
-          <span>${item.category}</span>
+          <span>${escapeHtml(item.category)}</span>
           <strong>${formatNumber(item.total)}</strong>
         </span>
         <span class="bar-track"><span class="bar-fill" style="width: ${percent}%"></span></span>
@@ -612,8 +618,8 @@ function renderTopStates() {
     const rankPosition = state.stateRankings.findIndex((stateItem) => stateItem.uf === item.uf) + 1;
     return `
     <li>
-      <button class="linklike ranked-link${item.uf === selectedUf ? ' is-selected' : ''}" data-uf="${item.uf}">
-        <span><b>#${rankPosition}</b> ${item.uf} - ${stateName(item.uf)}</span>
+      <button class="linklike ranked-link${item.uf === selectedUf ? ' is-selected' : ''}" data-uf="${escapeHtml(item.uf)}">
+        <span><b>#${rankPosition}</b> ${escapeHtml(item.uf)} - ${escapeHtml(stateName(item.uf))}</span>
         <strong>${formatNumber(item.total)}</strong>
       </button>
     </li>
@@ -644,8 +650,8 @@ async function loadStateAnalysis() {
     els.stateRankingLabel.textContent = `Cidades: ${formatNumber(totals.cities)}`;
     els.stateRankingList.innerHTML = topCities.map((item, index) => `
       <li>
-        <button class="linklike ranked-link" data-uf="${item.uf}" data-city="${item.city}">
-          <span><b>#${index + 1}</b> ${item.city}/${item.uf}</span>
+        <button class="linklike ranked-link" data-uf="${escapeHtml(item.uf)}" data-city="${escapeHtml(item.city)}">
+          <span><b>#${index + 1}</b> ${escapeHtml(item.city)}/${escapeHtml(item.uf)}</span>
           <strong>${formatNumber(item.total)}</strong>
         </button>
       </li>
@@ -667,8 +673,8 @@ async function loadStateAnalysis() {
   els.stateRankingLabel.textContent = `Cidades: ${formatNumber(data.summary.cities)}`;
   els.stateRankingList.innerHTML = data.topCities.map((item, index) => `
     <li>
-      <button class="linklike ranked-link" data-uf="${item.uf}" data-city="${item.city}">
-        <span><b>#${index + 1}</b> ${item.city}/${item.uf}</span>
+      <button class="linklike ranked-link" data-uf="${escapeHtml(item.uf)}" data-city="${escapeHtml(item.city)}">
+        <span><b>#${index + 1}</b> ${escapeHtml(item.city)}/${escapeHtml(item.uf)}</span>
         <strong>${formatNumber(item.total)}</strong>
       </button>
     </li>
@@ -748,7 +754,7 @@ async function renderCityDetail() {
 
   const categories = await api(`/cities/${encodeURIComponent(city.uf)}/${encodeURIComponent(city.name)}/aggregates`);
   root.querySelector('[data-categories]').innerHTML = categories.map((item) =>
-    `<button class="chip category-chip${state.cityCategory === item.category ? ' is-selected' : ''}" data-category="${item.category}" type="button">${item.category}: ${formatNumber(item.total)}</button>`
+    `<button class="chip category-chip${state.cityCategory === item.category ? ' is-selected' : ''}" data-category="${escapeHtml(item.category)}" type="button">${escapeHtml(item.category)}: ${formatNumber(item.total)}</button>`
   ).join('') || '<span class="chip">Sem agregados salvos</span>';
   root.querySelectorAll('[data-category]').forEach((button) => {
     button.addEventListener('click', async () => {
@@ -780,10 +786,10 @@ async function renderCityDetail() {
   const establishments = await api(`/cities/${encodeURIComponent(city.uf)}/${encodeURIComponent(city.name)}/establishments?${establishmentParams.toString()}`);
   root.querySelector('[data-establishments]').innerHTML = establishments.data.map((item) => `
     <tr>
-      <td>${item.trade_name && item.trade_name !== '-' ? item.trade_name : item.legal_name || '-'}</td>
-      <td>${item.category || '-'}</td>
-      <td>${item.neighborhood || '-'}</td>
-      <td>${item.registration_status || '-'}</td>
+      <td>${escapeHtml(item.trade_name && item.trade_name !== '-' ? item.trade_name : item.legal_name || '-')}</td>
+      <td>${escapeHtml(item.category || '-')}</td>
+      <td>${escapeHtml(item.neighborhood || '-')}</td>
+      <td>${escapeHtml(item.registration_status || '-')}</td>
     </tr>
   `).join('') || '<tr><td colspan="4">Nenhum estabelecimento salvo para esta cidade.</td></tr>';
 

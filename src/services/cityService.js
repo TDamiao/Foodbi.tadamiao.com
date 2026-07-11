@@ -47,11 +47,29 @@ export async function listCities({ uf, category } = {}) {
 
 export async function searchCities({ uf, q }) {
   return query(
-    `SELECT id, uf, name, ibge_code, latitude, longitude, collection_status, last_update_at
-     FROM cities
-     WHERE (:uf IS NULL OR uf = :uf)
-       AND (:q IS NULL OR name LIKE CONCAT('%', CAST(:q AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci, '%'))
-     ORDER BY uf, name
+    `SELECT
+       c.id,
+       c.uf,
+       c.name,
+       c.ibge_code,
+       c.latitude,
+       c.longitude,
+       c.collection_status,
+       c.last_update_at,
+       COALESCE(SUM(a.total), 0) AS total
+     FROM cities c
+     LEFT JOIN city_aggregates a ON a.city_id = c.id
+     WHERE (:uf IS NULL OR c.uf = :uf)
+       AND (:q IS NULL OR c.name LIKE CONCAT('%', CAST(:q AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci, '%'))
+     GROUP BY c.id
+     ORDER BY
+       CASE
+         WHEN :q IS NOT NULL AND c.name = CAST(:q AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci THEN 0
+         ELSE 1
+       END,
+       total DESC,
+       c.uf,
+       c.name
      LIMIT 20`,
     { uf: uf || null, q: q || null }
   );
